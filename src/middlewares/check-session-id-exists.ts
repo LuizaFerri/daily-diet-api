@@ -1,0 +1,1 @@
+// Middleware para verificar se o sessionId existe 

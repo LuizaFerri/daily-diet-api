@@ -1,0 +1,1 @@
+// Função para calcular métricas do usuário 
