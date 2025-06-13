@@ -47,5 +47,23 @@ export async function mealsRoutes(app: FastifyInstance) {
     }
   );
 
- 
+  app.get(
+    "/meals",
+    {
+      preHandler: [checkSessionIdExists],
+    },
+    async (request, reply) => {
+      const userId = request.user!.id;
+
+      const meals = await knex("meals")
+        .where("user_id", userId)
+        .orderBy("date_time", "desc")
+        .select("*");
+
+      return reply.status(200).send({
+        meals,
+        total: meals.length,
+      });
+    }
+  );
 }
