@@ -79,6 +79,46 @@ export async function mealsRoutes(app: FastifyInstance) {
   );
 
   app.get(
+    "/meals/metrics",
+    {
+      preHandler: [checkSessionIdExists],
+    },
+    async (request, reply) => {
+      const userId = request.user!.id;
+
+      const meals = await knex("meals")
+        .where("user_id", userId)
+        .orderBy("date_time", "asc")
+        .select("*");
+
+      const totalMeals = meals.length;
+      const mealsOnDiet = meals.filter(meal => meal.is_on_diet).length;
+      const mealsOffDiet = totalMeals - mealsOnDiet;
+
+      let bestSequence = 0;
+      let currentSequence = 0;
+
+      for (const meal of meals) {
+        if (meal.is_on_diet) {
+          currentSequence++;
+          bestSequence = Math.max(bestSequence, currentSequence);
+        } else {
+          currentSequence = 0;
+        }
+      }
+
+      return reply.status(200).send({
+        metrics: {
+          totalMeals,
+          mealsOnDiet,
+          mealsOffDiet,
+          bestDietSequence: bestSequence,
+        },
+      });
+    }
+  );
+
+  app.get(
     "/meals/:id",
     {
       preHandler: [checkSessionIdExists],
@@ -98,6 +138,7 @@ export async function mealsRoutes(app: FastifyInstance) {
           error: "Refeição não encontrada",
         });
       }
+
       return reply.status(200).send({
         meal,
       });
@@ -111,6 +152,7 @@ export async function mealsRoutes(app: FastifyInstance) {
     },
     async (request, reply) => {
       const { id } = getMealParamsSchema.parse(request.params);
+
       const { name, description, date_time, is_on_diet } =
         updateMealBodySchema.parse(request.body);
 
@@ -168,7 +210,10 @@ export async function mealsRoutes(app: FastifyInstance) {
         });
       }
 
-      await knex("meals").where("id", id).andWhere("user_id", userId).delete();
+      await knex("meals")
+        .where("id", id)
+        .andWhere("user_id", userId)
+        .delete();
 
       return reply.status(200).send({
         message: "Refeição excluída com sucesso",
